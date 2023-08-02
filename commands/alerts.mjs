@@ -95,7 +95,7 @@ export const generateFakeAlerts = async (n) => {
   console.log(totalUserNameCount, " unique usernames will be generated");
   console.log(totalHostNameCount, " unique hostnames will be generated");
 
-  const limitPerBatch = 25000;
+  const limitPerBatch = 1_000_000;
   let generated = 0;
 
   let hostName = faker.internet.domainName();
@@ -138,7 +138,7 @@ export const generateFakeAlerts = async (n) => {
     }
 
     try {
-      const result = await client.bulk({ body: docs, refresh: true });
+      const result = await client.bulk({ body: docs });
       generated += result.items.length;
       // @ts-ignore
       console.log(
