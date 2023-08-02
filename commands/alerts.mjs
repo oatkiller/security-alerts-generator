@@ -51,17 +51,24 @@ const alertIndexCheck = async () => {
 
 // @ts-ignore
 export const generateFakeAlerts = async (n) => {
+  const countOfAlertsToGenerate = parseInt(n, 10);
   await alertIndexCheck();
 
   // @ts-ignore
   console.log("Generating fake alerts...");
 
-  const alertPerMinute = 16_000;
+  const alertPerMinute = 1_000;
+
+  const totalUserNameCount = Math.min(500_000, countOfAlertsToGenerate);
+  const alertsPerUserName = countOfAlertsToGenerate / totalUserNameCount;
+  const totalHostNameCount = Math.min(135_000, countOfAlertsToGenerate);
+  const alertsPerHostName = countOfAlertsToGenerate / totalHostNameCount
+
 
   const endingTime = new Date();
 
   const startingTime = new Date(
-    endingTime.getTime() - (n / alertPerMinute) * 60 * 1000
+    endingTime.getTime() - (countOfAlertsToGenerate / alertPerMinute) * 60 * 1000
   );
 
   const duration = endingTime.getTime() - startingTime.getTime();
@@ -70,7 +77,7 @@ export const generateFakeAlerts = async (n) => {
 
   // @ts-ignore
   console.log(
-    n,
+    countOfAlertsToGenerate,
     " alerts will be indexed with @timestamps between ",
     startingTime.toLocaleString(),
     " and ",
@@ -85,11 +92,6 @@ export const generateFakeAlerts = async (n) => {
     " alerts per minute"
   );
 
-  const totalUserNameCount = Math.min(500_000, n);
-  const alertsPerUserName = n / totalUserNameCount;
-  const totalHostNameCount = Math.min(135_000, n);
-      const alertsPerHostName = n / totalHostNameCount
-
   console.log(totalUserNameCount, " unique usernames will be generated");
   console.log(totalHostNameCount, " unique hostnames will be generated");
 
@@ -102,8 +104,8 @@ export const generateFakeAlerts = async (n) => {
   let userName = faker.internet.userName();
   let userNamesGenerated = 1;
 
-  while (generated < n) {
-    const alertCountForThisBatch = Math.min(limitPerBatch, n - generated);
+  while (generated < countOfAlertsToGenerate) {
+    const alertCountForThisBatch = Math.min(limitPerBatch, countOfAlertsToGenerate - generated);
 
     const docs = [];
 
@@ -121,7 +123,7 @@ export const generateFakeAlerts = async (n) => {
         hostName = faker.internet.domainName();
       }
 
-      const timestamp = lerpDate(startingTime, endingTime, index / n);
+      const timestamp = lerpDate(startingTime, endingTime, index / countOfAlertsToGenerate);
 
       const alert = createAlert({
         hostName,
@@ -140,7 +142,7 @@ export const generateFakeAlerts = async (n) => {
       generated += result.items.length;
       // @ts-ignore
       console.log(
-        `${result.items.length} alerts created, ${n - generated} left`
+        `${result.items.length} alerts created, ${countOfAlertsToGenerate - generated} left`
       );
     } catch (err) {
       // @ts-ignore
@@ -150,6 +152,9 @@ export const generateFakeAlerts = async (n) => {
 
   // @ts-ignore
   console.log("Finished gerating alerts");
+  console.log('Total alerts generated: ', generated);
+  console.log('total user names generated: ', userNamesGenerated);
+  console.log('total host names generated: ', hostNamesGenerated);
 };
 
 export const deleteAllAlerts = async () => {
@@ -157,7 +162,6 @@ export const deleteAllAlerts = async () => {
   console.log("Deleting all alerts...");
   try {
     // @ts-ignore
-    console.log("Deleted all alerts");
     await client.deleteByQuery({
       index: ALERT_INDEX,
       refresh: true,
@@ -167,6 +171,7 @@ export const deleteAllAlerts = async () => {
         },
       },
     });
+    console.log("Deleted all alerts");
   } catch (error) {
     // @ts-ignore
     console.log("Failed to delete alerts");
