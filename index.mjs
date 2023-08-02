@@ -2,6 +2,8 @@
 import { program } from 'commander';
 import { generateFakeAlerts, deleteAllAlerts } from './commands/alerts.mjs';
 import { fetchRiskScore } from './commands/risk-score.mjs';
+import {deleteRiskScores} from './commands/delete-risk-scores.mjs';
+import { viewRiskScores } from './commands/view-risk-scores.mjs';
 
 
 program
@@ -19,5 +21,15 @@ program
   .command('test-risk-score')
   .description('Test risk score API')
   .action(fetchRiskScore)
+
+program
+  .command('delete-risk-scores')
+  .description('Delete Scores persisted by risk score API')
+  .action(deleteRiskScores)
+
+program
+  .command('view-risk-scores')
+  .description('view Scores persisted by risk score API')
+  .action(viewRiskScores)
 
 program.parse();

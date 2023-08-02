@@ -1,6 +1,12 @@
 import { faker } from '@faker-js/faker';
 
-export default function createAlerts() {
+/**
+ * @param {object} options
+ * @param {string} options.hostName
+ * @param {string} options.userName
+ * @param {number} options.timestamp
+ */
+export default function createAlert({ hostName, userName, timestamp } = {}) {
    return {
         "kibana.alert.start": "2023-04-11T20:18:15.816Z",
         "kibana.alert.last_detected": "2023-04-11T20:18:15.816Z",
@@ -45,15 +51,15 @@ export default function createAlerts() {
             "default"
         ],
         "kibana.alert.rule.tags": [],
-        "@timestamp": Date.now(),
+        "@timestamp": timestamp ?? Date.now(),
         "host": {
-            "name": faker.datatype.uuid(),
+            "name": hostName ?? faker.datatype.uuid(),
             "os": {
                 "full": "server"
             }
         },
         "user": {
-            "name": faker.datatype.uuid(),
+            "name": userName ?? faker.datatype.uuid(),
         },
         "event.kind": "signal",
         "kibana.alert.original_time": "2023-04-11T20:17:14.851Z",

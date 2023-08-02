@@ -1,93 +1,185 @@
-import { Client } from '@elastic/elasticsearch';
-import createAlerts from '../createAlert.mjs';
-import alertMappings from '../alertMappings.json'  assert { type: "json" };
-import config from '../config.json'  assert { type: "json" };
+import createAlert from "../createAlert.mjs";
+// @ts-ignore
+import alertMappings from "../alertMappings.json" assert { type: "json" };
+// @ts-ignore
+import config from "../config.json" assert { type: "json" };
+import {faker} from "@faker-js/faker";
+import {client} from "../es-client.mjs";
 
-const client = new Client({
-    node: config.elastic.node,
-    auth: {
-        username: config.elastic.username,
-        password: config.elastic.password
-    }
-})
+const ALERT_INDEX = ".alerts-security.alerts-default";
 
-const ALERT_INDEX = '.alerts-security.alerts-default';
-
-
+/**
+ * @param {number} n - number of alerts to generate
+ */
 const createDocuments = (n) => {
-    return Array(n).fill(null).reduce((acc) => {
-        const alert = createAlerts();
-        acc.push({ index: { _index: ALERT_INDEX, _id: alert['kibana.alert.uuid'] } })
-        acc.push(alert)
-        return acc
-    }, [])
+  return Array(n)
+    .fill(null)
+    .reduce((acc) => {
+      const alert = createAlert();
+      acc.push({
+        index: { _index: ALERT_INDEX, _id: alert["kibana.alert.uuid"] },
+      });
+      acc.push(alert);
+      return acc;
+    }, []);
 };
 
-
 const alertIndexCheck = async () => {
-    const isExist = await client.indices.exists({ index: ALERT_INDEX });
-    if (isExist) return;
-    
-    console.log('Alert index does not exist, creating...')
+  const isExist = await client.indices.exists({ index: ALERT_INDEX });
+  if (isExist) return;
 
-    try {
-        await client.indices.create({
-            index: ALERT_INDEX,
-            body: {
-                mappings: alertMappings.mappings,
-                settings: {
-                    "index.mapping.total_fields.limit": 2000
-                },
-            }
-        });
-        console.log('Alert index created')
-    } catch (error) {
-        console.log('Alert index creation failed', error)
-    } 
+  // @ts-ignore
+  console.log("Alert index does not exist, creating...");
 
-}
+  try {
+    await client.indices.create({
+      index: ALERT_INDEX,
+      body: {
+        mappings: alertMappings.mappings,
+        settings: {
+          "index.mapping.total_fields.limit": 2000,
+        },
+      },
+    });
+    // @ts-ignore
+    console.log("Alert index created");
+  } catch (error) {
+    // @ts-ignore
+    console.log("Alert index creation failed", error);
+  }
+};
 
-
+// @ts-ignore
 export const generateFakeAlerts = async (n) => {
-    await alertIndexCheck();
+  await alertIndexCheck();
 
-    console.log('Generating fake alerts...');
+  // @ts-ignore
+  console.log("Generating fake alerts...");
 
-    let limit = 25000;
-    let generated = 0;
+  const alertPerMinute = 16_000;
 
+  const endingTime = new Date();
 
-    while (generated < n) {
-        let docs = createDocuments(Math.min(limit, n));
-        try {
-            const result = await client.bulk({ body: docs, refresh: true });
-            generated += result.items.length;
-            console.log(`${result.items.length} alerts created, ${n - generated} left`);
-        } catch (err) {
-            console.log('Error: ', err)
-        }
+  const startingTime = new Date(
+    endingTime.getTime() - (n / alertPerMinute) * 60 * 1000
+  );
+
+  const duration = endingTime.getTime() - startingTime.getTime();
+
+  const durationInMinutes = duration / 1000 / 60;
+
+  // @ts-ignore
+  console.log(
+    n,
+    " alerts will be indexed with @timestamps between ",
+    startingTime.toLocaleString(),
+    " and ",
+    endingTime.toLocaleString()
+  );
+  // @ts-ignore
+  console.log(
+    "that is a duration of ",
+    durationInMinutes,
+    " minutes and at a rate of ",
+    alertPerMinute,
+    " alerts per minute"
+  );
+
+  const totalUserNameCount = Math.min(500_000, n);
+  const alertsPerUserName = n / totalUserNameCount;
+  const totalHostNameCount = Math.min(135_000, n);
+      const alertsPerHostName = n / totalHostNameCount
+
+  console.log(totalUserNameCount, " unique usernames will be generated");
+  console.log(totalHostNameCount, " unique hostnames will be generated");
+
+  const limitPerBatch = 25000;
+  let generated = 0;
+
+  let hostName = faker.internet.domainName();
+  let hostNamesGenerated = 1;
+
+  let userName = faker.internet.userName();
+  let userNamesGenerated = 1;
+
+  while (generated < n) {
+    const alertCountForThisBatch = Math.min(limitPerBatch, n - generated);
+
+    const docs = [];
+
+    for (let index = generated; index < generated + alertCountForThisBatch; index++) {
+
+      // if the current user name has been used in enough alerts, generate a new one
+      if (index + 1> alertsPerUserName * userNamesGenerated) {
+        userNamesGenerated++;
+        userName = faker.internet.userName();
+      }
+
+      // if the current host name has been used in enough alerts, generate a new one
+      if (index + 1 > alertsPerHostName * hostNamesGenerated) {
+        hostNamesGenerated++;
+        hostName = faker.internet.domainName();
+      }
+
+      const timestamp = lerpDate(startingTime, endingTime, index / n);
+
+      const alert = createAlert({
+        hostName,
+        userName,
+        timestamp: timestamp.getTime(),
+      });
+
+      docs.push({
+        index: { _index: ALERT_INDEX, _id: alert["kibana.alert.uuid"] },
+      });
+      docs.push(alert);
     }
 
-    console.log('Finished gerating alerts')
+    try {
+      const result = await client.bulk({ body: docs, refresh: true });
+      generated += result.items.length;
+      // @ts-ignore
+      console.log(
+        `${result.items.length} alerts created, ${n - generated} left`
+      );
+    } catch (err) {
+      // @ts-ignore
+      console.log("Error: ", err);
+    }
+  }
 
-}
+  // @ts-ignore
+  console.log("Finished gerating alerts");
+};
 
 export const deleteAllAlerts = async () => {
-    console.log('Deleting all alerts...');
-    try {
-        console.log('Deleted all alerts')
-        await client.deleteByQuery({
-            index: ALERT_INDEX,
-            refresh: true,
-            body: {
-                query: {
-                    match_all: {}
-                }
-            }
-        });
-    } catch (error) {
-        console.log('Failed to delete alerts')
-        console.log(error)
-    }
-}
+  // @ts-ignore
+  console.log("Deleting all alerts...");
+  try {
+    // @ts-ignore
+    console.log("Deleted all alerts");
+    await client.deleteByQuery({
+      index: ALERT_INDEX,
+      refresh: true,
+      body: {
+        query: {
+          match_all: {},
+        },
+      },
+    });
+  } catch (error) {
+    // @ts-ignore
+    console.log("Failed to delete alerts");
+    // @ts-ignore
+    console.log(error);
+  }
+};
 
+/**
+ * @param {Date} start
+ * @param {Date} end
+ * @param {number} t between 0 and 1
+ */
+function lerpDate(start,end,t) {
+  return new Date((1 - t) * start.getTime() + t * end.getTime());
+}
