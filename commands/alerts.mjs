@@ -107,6 +107,7 @@ export const deleteAllAlerts = async () => {
     // @ts-ignore
     await client.deleteByQuery({
       index: ALERT_INDEX,
+      conflicts: "proceed",
       refresh: true,
       body: {
         query: {
