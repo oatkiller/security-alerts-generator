@@ -2,7 +2,6 @@ import createAlert from "../createAlert.mjs";
 // @ts-ignore
 import alertMappings from "../alertMappings.json" assert { type: "json" };
 // @ts-ignore
-import config from "../config.json" assert { type: "json" };
 import { faker } from "@faker-js/faker";
 import { client } from "../es-client.mjs";
 

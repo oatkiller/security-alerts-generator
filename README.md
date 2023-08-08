@@ -34,3 +34,22 @@ node index.mjs delete-alerts
 node index.mjs generate-alerts 10000
 node index.mjs test-risk-score
 ```
+
+### Setting up your cloud env to report to APM
+
+Needed in both ES and Kibana user settings:
+```
+elastic:
+  apm:
+    active: true
+    environment: 'ea-benchmarking'
+```
+
+### Enabling risk APIs on Kibana
+
+Needed in Kibana user settings:
+
+```
+xpack.securitySolution.enableExperimental: ['riskScoringRoutesEnabled', 'riskScoringPersistence']
+```
+
